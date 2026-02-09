@@ -3,17 +3,17 @@ import LoginView from "@/components/LoginView";
 import ProfileView from "@/components/ProfileView";
 import RidesView from "@/components/RidesView";
 import PostRideView from "@/components/PostRideView";
-import AppHeader from "@/components/AppHeader";
+import AppHeader, { type View } from "@/components/AppHeader";
+import BottomNav from "@/components/BottomNav";
+import { AppProvider } from "@/store/AppContext";
 
-type View = "login" | "profile" | "rides" | "post";
-
-const Index = () => {
+const AppContent = () => {
   const [currentView, setCurrentView] = useState<View>("login");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const handleLogin = () => {
     setIsLoggedIn(true);
-    setCurrentView("profile");
+    setCurrentView("rides");
   };
 
   const handleLogout = () => {
@@ -35,8 +35,15 @@ const Index = () => {
         {currentView === "rides" && <RidesView />}
         {currentView === "post" && <PostRideView onComplete={() => setCurrentView("rides")} />}
       </main>
+      {isLoggedIn && <BottomNav currentView={currentView} onNavigate={setCurrentView} />}
     </div>
   );
 };
+
+const Index = () => (
+  <AppProvider>
+    <AppContent />
+  </AppProvider>
+);
 
 export default Index;

@@ -50,6 +50,10 @@
 
     --navy: 215 25% 17%;
     --navy-light: 215 20% 27%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 20%;
+    --warning-muted: 38 90% 95%;
   }
 
   .dark {
@@ -84,6 +88,10 @@
     --success-foreground: 0 0% 100%;
     --navy: 215 25% 10%;
     --navy-light: 215 20% 18%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 90%;
+    --warning-muted: 38 30% 18%;
   }
 }
 
