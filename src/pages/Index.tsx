@@ -1,12 +1,40 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import LoginView from "@/components/LoginView";
+import ProfileView from "@/components/ProfileView";
+import RidesView from "@/components/RidesView";
+import PostRideView from "@/components/PostRideView";
+import AppHeader from "@/components/AppHeader";
+
+type View = "login" | "profile" | "rides" | "post";
 
 const Index = () => {
+  const [currentView, setCurrentView] = useState<View>("login");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+    setCurrentView("profile");
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentView("login");
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <AppHeader
+        currentView={currentView}
+        onNavigate={setCurrentView}
+        isLoggedIn={isLoggedIn}
+        onLogout={handleLogout}
+      />
+      <main>
+        {currentView === "login" && <LoginView onLogin={handleLogin} />}
+        {currentView === "profile" && <ProfileView />}
+        {currentView === "rides" && <RidesView />}
+        {currentView === "post" && <PostRideView onComplete={() => setCurrentView("rides")} />}
+      </main>
     </div>
   );
 };
