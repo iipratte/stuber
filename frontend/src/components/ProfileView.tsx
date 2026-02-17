@@ -1,15 +1,101 @@
-import { BadgeCheck, MapPin, Car, Star, Shield, Award, Route } from "lucide-react";
+import { useState, useEffect } from "react";
+import { BadgeCheck, MapPin, Car, Star, Shield, Award, Route, Edit2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 import profilePhoto from "@/assets/profile-photo.jpg";
 import carExterior from "@/assets/car-exterior.jpg";
 import carInterior from "@/assets/car-interior.jpg";
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
 const ProfileView = () => {
+  const [username, setUsername] = useState("marcusrivera");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const userId = 1; // Default user ID - in a real app, this would come from auth context
+
+  useEffect(() => {
+    // Fetch user data on mount
+    const fetchUser = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/users/${userId}`);
+        if (response.ok) {
+          const user = await response.json();
+          setUsername(user.username);
+        }
+      } catch (error) {
+        console.error("Error fetching user:", error);
+      }
+    };
+    fetchUser();
+  }, [userId]);
+
+  const handleEdit = () => {
+    setEditValue(username);
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditValue("");
+  };
+
+  const handleSave = async () => {
+    if (!editValue.trim()) {
+      toast({
+        title: "Error",
+        description: "Username cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/${userId}/username`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username: editValue.trim() }),
+      });
+
+      if (response.ok) {
+        const updatedUser = await response.json();
+        setUsername(updatedUser.username);
+        setIsEditing(false);
+        toast({
+          title: "Success",
+          description: "Username updated successfully",
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to update username",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating username:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update username. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-lg animate-fade-in px-4 py-6 pb-24">
       {/* Profile header */}
@@ -33,7 +119,56 @@ const ProfileView = () => {
           </Tooltip>
         </div>
         <h2 className="text-xl font-semibold text-foreground">Marcus Rivera</h2>
-        <p className="text-sm text-muted-foreground">@marcusrivera</p>
+        <div className="flex items-center gap-2">
+          {isEditing ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                className="h-8 w-32 text-center text-sm"
+                disabled={loading}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSave();
+                  } else if (e.key === "Escape") {
+                    handleCancel();
+                  }
+                }}
+                autoFocus
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleSave}
+                disabled={loading}
+                className="h-8 w-8 p-0"
+              >
+                <Check className="h-4 w-4 text-green-600" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleCancel}
+                disabled={loading}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4 text-red-600" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted-foreground">@{username}</p>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleEdit}
+                className="h-6 w-6 p-0"
+              >
+                <Edit2 className="h-3 w-3 text-muted-foreground" />
+              </Button>
+            </div>
+          )}
+        </div>
         <div className="mt-2 flex items-center gap-1">
           {[1, 2, 3, 4, 5].map((i) => (
             <Star key={i} className={`h-4 w-4 ${i <= 4 ? "fill-primary text-primary" : "fill-muted text-muted"}`} />

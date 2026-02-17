@@ -1,40 +1,108 @@
-# Welcome to your Lovable project
+# STÜBER - BYU Ride-Sharing App
 
-## Project info
+## Project Structure
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+This project is organized into three main directories:
 
-## How can I edit this code?
+- `/frontend` - React + Vite frontend application
+- `/backend` - Express.js backend server
+- `/db` - PostgreSQL database scripts (schema.sql and seed.sql)
 
-There are several ways of editing your application.
+## Setup Instructions
 
-**Use Lovable**
+### Prerequisites
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- Node.js and npm installed
+- PostgreSQL database server running
 
-Changes made via Lovable will be committed automatically to this repo.
+### Database Setup
 
-**Use your preferred IDE**
+**Option 1: Automated Setup (Recommended)**
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Run the setup script from the `db` directory:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+**Windows (PowerShell):**
+```powershell
+cd db
+.\setup.ps1
+```
 
-Follow these steps:
+**Linux/Mac:**
+```bash
+cd db
+chmod +x setup.sh
+./setup.sh
+```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+**Option 2: Manual Setup**
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+1. Create a PostgreSQL database named `stuber`:
+```bash
+# Windows/Linux/Mac
+psql -U postgres -c "CREATE DATABASE stuber;"
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+2. Run the schema to create the users table:
+```bash
+psql -U postgres -d stuber -f db/schema.sql
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+3. Seed the database with initial data:
+```bash
+psql -U postgres -d stuber -f db/seed.sql
+```
+
+**Note:** You may be prompted for your PostgreSQL password. If you don't have a password set, you can leave it blank or set the `PGPASSWORD` environment variable.
+
+### Backend Setup
+
+1. Navigate to the backend directory:
+```bash
+cd backend
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Create a `.env` file (copy from `.env.example`):
+```bash
+cp .env.example .env
+```
+
+4. Update the `.env` file with your PostgreSQL credentials.
+
+5. Start the backend server:
+```bash
 npm run dev
 ```
+
+The backend will run on `http://localhost:3000`
+
+### Frontend Setup
+
+1. Navigate to the frontend directory:
+```bash
+cd frontend
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Create a `.env` file with the API URL (optional, defaults to `http://localhost:3000`):
+```
+VITE_API_URL=http://localhost:3000
+```
+
+4. Start the development server:
+```bash
+npm run dev
+```
+
+The frontend will run on `http://localhost:8080`
 
 **Edit a file directly in GitHub**
 
