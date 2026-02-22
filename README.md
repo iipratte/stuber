@@ -70,7 +70,7 @@ cd frontend
 npm run dev
 ```
 
-The frontend will start at the URL shown in your terminal (usually http://localhost:5173). Open this URL in your browser to view the app.
+The frontend will start at the URL shown in your terminal (usually http://localhost:8080). Open this URL in your browser to view the app.
 
 ---
 
