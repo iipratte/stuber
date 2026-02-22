@@ -5,7 +5,7 @@ Many college students have limited access to transportation but still rely on ca
 ![TechStack](img/TechStack.png)
 
 **Architecture Diagram**
-![Architecture Diagram](img/ArchitectureDiagram)
+![Architecture Diagram](img/ArchitectureDiagram.png)
 
 **PREREQUISITES**
 Before running this project, ensure you have the following software installed on your machine:
