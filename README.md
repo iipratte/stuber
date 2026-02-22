@@ -45,3 +45,52 @@ Edit Data: Select the pencil icon next to the username and edit the name to some
 Confirm Persistence: Refresh the page or restart both the frontend and backend servers.
 Verify: Return to the profile page. If the edited username is still displayed, the change has successfully persisted in the PostgreSQL database.
 
+## PREREQUISITES
+Before running this project, ensure you have the following software installed on your machine:
+* **Node.js (v18 or higher)** | [Official Site](https://nodejs.org/)
+* **PostgreSQL (Database Server)** | [Official Site](https://www.postgresql.org/download/)
+* **psql (Command Line Tools)** | *Note: This is usually included with your PostgreSQL installation. Ensure it is added to your system PATH so it can be run from any terminal.*
+
+### Verification Commands
+To check if these are installed correctly, run the following in your terminal:
+* **Check Node:** `node -v`
+* **Check psql:** `psql --version`
+
+---
+
+## INSTALLATION AND SETUP
+
+### Step 1: Install Dependencies
+Navigate to the project root and install packages for both the frontend and backend:
+* **For the backend:**
+    ```bash
+    cd backend
+    npm install
+    ```
+* **For the frontend:**
+    ```bash
+    cd ../frontend
+    npm install
+    ```
+
+### Step 2: Database Configuration
+Ensure your PostgreSQL server is active. Run these three commands in order to create and populate your database:
+1.  **Create Database:** `psql -U postgres -c "CREATE DATABASE stuber;"`
+2.  **Run Schema:** `psql -U postgres -d stuber -f db/schema.sql`
+3.  **Run Seed Data:** `psql -U postgres -d stuber -f db/seed.sql`
+
+### Step 3: Environment Variables
+1.  Navigate to the `/backend` folder.
+2.  Create a file named `.env` (you can copy `.env.example` as a template).
+3.  Open `.env` and verify your credentials (**DB_USER**, **DB_PASSWORD**, etc.) match your local PostgreSQL settings.
+
+---
+
+## RUNNING THE APPLICATION
+You will need two separate terminal windows or tabs running at the same time.
+
+**Terminal 1 (Backend):**
+```bash
+cd backend
+npm run dev
+
