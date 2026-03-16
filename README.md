@@ -85,13 +85,13 @@ Follow these steps to confirm the full stack is working correctly:
 3. **Confirm Persistence:** Refresh the page or restart both the frontend and backend servers.
 4. **Verify:** Return to the profile page. If the edited username is still displayed, the change has successfully persisted in the PostgreSQL database.
 
-##EARS Requirements
-** Completed
+## EARS Requirements
+**Completed**
 - The database shall hold user, car, and ride information
 - When the user clicks a different page, the system will load the specified page
 - When the user changes profile information, the system shall save the updated information
 - When the user is logged in, the system shall display the available rides page
-** Not completed
+**Not completed**
 - When a user posts a ride, the system shall add it to the available ride page
 - The system shall display all available rides
 - When a user selects a ride, the booking information is shown
@@ -99,5 +99,3 @@ Follow these steps to confirm the full stack is working correctly:
 - The system shall show a "My Rides" page displaying your booking and offers
 - When the user selects my offers, the system shall display who has filled the seats
 - When the user selects my bookings, the system shall display the ride infromation
-
-- 
