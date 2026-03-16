@@ -91,6 +91,7 @@ Follow these steps to confirm the full stack is working correctly:
 - When the user clicks a different page, the system will load the specified page
 - When the user changes profile information, the system shall save the updated information
 - When the user is logged in, the system shall display the available rides page
+
 **Not completed**
 - When a user posts a ride, the system shall add it to the available ride page
 - The system shall display all available rides
