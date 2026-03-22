@@ -24,9 +24,28 @@ const LoginView = ({ onLogin }: LoginViewProps) => {
     setLoading(true);
     try {
       if (isSignUp) {
-        toast.message("Sign-up not wired yet", {
-          description: "For now, use one of the seeded users (password: ChangeMe123!).",
+        const resp = await fetch(`${API_BASE_URL}/api/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, fullName: name }),
         });
+
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          const msg = (data && typeof data.error === "string" && data.error) || "Could not create account";
+          toast.error(msg);
+          return;
+        }
+
+        const user = data?.user;
+        if (!user?.user_id) {
+          toast.error("Sign-up failed", { description: "Server response was missing user info." });
+          return;
+        }
+
+        localStorage.setItem("stuber.user", JSON.stringify(user));
+        toast.success("Account created!", { description: "You're signed in." });
+        onLogin(user);
         return;
       }
 
@@ -54,7 +73,9 @@ const LoginView = ({ onLogin }: LoginViewProps) => {
       onLogin(user);
     } catch (err) {
       console.error(err);
-      toast.error("Sign-in failed", { description: "Could not reach the server." });
+      toast.error(isSignUp ? "Sign-up failed" : "Sign-in failed", {
+        description: "Could not reach the server.",
+      });
     } finally {
       setLoading(false);
     }

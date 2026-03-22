@@ -96,6 +96,107 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Auth: register (email + password + full name)
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, fullName } = req.body ?? {};
+
+    if (!email || typeof email !== 'string' || email.trim() === '') {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    if (!password || typeof password !== 'string' || password === '') {
+      return res.status(400).json({ error: 'Password is required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+    if (!fullName || typeof fullName !== 'string' || fullName.trim() === '') {
+      return res.status(400).json({ error: 'Full name is required' });
+    }
+
+    const emailNorm = email.trim().toLowerCase();
+
+    const dupEmail = await pool.query(
+      `SELECT 1 FROM users WHERE LOWER(email) = $1 LIMIT 1`,
+      [emailNorm]
+    );
+    if (dupEmail.rows.length > 0) {
+      return res.status(409).json({ error: 'An account with this email already exists' });
+    }
+
+    const trimmed = fullName.trim();
+    const firstSpace = trimmed.indexOf(' ');
+    let first_name;
+    let last_name;
+    if (firstSpace === -1) {
+      first_name = trimmed;
+      last_name = trimmed;
+    } else {
+      first_name = trimmed.slice(0, firstSpace).trim();
+      last_name = trimmed.slice(firstSpace + 1).trim() || '-';
+    }
+
+    const localPart = emailNorm.split('@')[0] || '';
+    let base = localPart.replace(/[^a-z0-9_]/gi, '').toLowerCase();
+    if (!base) base = 'user';
+    base = base.slice(0, 100);
+
+    let username = base;
+    for (let n = 0; n < 10000; n++) {
+      const suffix = n === 0 ? '' : String(n);
+      const maxBase = Math.max(0, 100 - suffix.length);
+      username = (base.slice(0, maxBase) + suffix).slice(0, 100);
+      const taken = await pool.query(
+        `SELECT 1 FROM users WHERE LOWER(username) = $1 LIMIT 1`,
+        [username.toLowerCase()]
+      );
+      if (taken.rows.length === 0) break;
+      if (n === 9999) {
+        return res.status(500).json({ error: 'Could not allocate a unique username' });
+      }
+    }
+
+    const phone = '';
+
+    const result = await pool.query(
+      `INSERT INTO users (first_name, last_name, username, email, phone, password_hash)
+       VALUES ($1, $2, $3, $4, $5, crypt($6, gen_salt('bf')))
+       RETURNING user_id, first_name, last_name, username, email, phone, profile_photo_url, car_id`,
+      [first_name, last_name, username, emailNorm, phone, password]
+    );
+
+    res.json({ user: result.rows[0] });
+  } catch (error) {
+    console.error('Error registering:', error);
+
+    const msg = typeof error?.message === 'string' ? error.message : '';
+    if (msg.includes('SASL') || msg.includes('password must be a string')) {
+      return res.status(500).json({
+        error:
+          'Database connection failed. Copy backend/.env.example to backend/.env and set DB_PASSWORD to your PostgreSQL user password.',
+      });
+    }
+
+    if (error.code === '3D000') {
+      return res.status(500).json({
+        error: 'Database does not exist. Please run the database setup scripts first.',
+      });
+    }
+    if (error.code === '28P01') {
+      return res.status(500).json({
+        error: 'Database authentication failed. Please check your .env file credentials.',
+      });
+    }
+    if (error.code === '42883') {
+      return res.status(500).json({
+        error: "Password hashing functions not available. Ensure 'pgcrypto' extension is installed (schema.sql).",
+      });
+    }
+
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get all users
 app.get('/api/users', async (req, res) => {
   try {
