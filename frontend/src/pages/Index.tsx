@@ -54,7 +54,7 @@ const AppContent = () => {
       />
       <main>
         {currentView === "login" && <LoginView onLogin={handleLogin} />}
-        {currentView === "profile" && <ProfileView userId={userId ?? 1} />}
+        {currentView === "profile" && userId != null && <ProfileView userId={userId} />}
         {currentView === "rides" && <RidesView />}
         {currentView === "post" && <PostRideView onComplete={() => setCurrentView("rides")} />}
         {currentView === "my-rides" && <MyRidesView />}
