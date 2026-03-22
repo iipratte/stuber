@@ -19,11 +19,20 @@ const LoginView = ({ onLogin }: LoginViewProps) => {
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
+  const isByuEmail = (value: string) =>
+    /^[^\s@]+@byu\.edu$/i.test(value.trim());
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       if (isSignUp) {
+        if (!isByuEmail(email)) {
+          toast.error("Use a @byu.edu email", {
+            description: "Only BYU email addresses can create an account.",
+          });
+          return;
+        }
         const resp = await fetch(`${API_BASE_URL}/api/auth/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -128,8 +137,12 @@ const LoginView = ({ onLogin }: LoginViewProps) => {
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
                   required
+                  autoComplete="email"
                 />
               </div>
+              {isSignUp ? (
+                <p className="text-xs text-muted-foreground">You must use an address ending in @byu.edu.</p>
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password" className="text-sm font-medium text-foreground">Password</Label>
