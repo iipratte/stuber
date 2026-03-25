@@ -145,6 +145,10 @@ app.post('/api/auth/register', async (req, res) => {
 
     const emailNorm = email.trim().toLowerCase();
 
+    if (!/^[^\s@]+@byu\.edu$/.test(emailNorm)) {
+      return res.status(400).json({ error: 'Sign up requires a @byu.edu email address.' });
+    }
+
     const dupEmail = await pool.query(
       `SELECT 1 FROM users WHERE LOWER(email) = $1 LIMIT 1`,
       [emailNorm]
