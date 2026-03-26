@@ -93,9 +93,9 @@ const LoginView = ({ onLogin }: LoginViewProps) => {
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           {/* Trust badges */}
-          <div className="mb-5 flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2">
-            <ShieldCheck className="h-4 w-4 text-accent-foreground" />
-            <span className="text-xs font-medium text-accent-foreground">Verified BYU Students Only</span>
+          <div className="mb-5 flex items-center justify-center gap-2 rounded-lg bg-navy px-3 py-2">
+            <ShieldCheck className="h-4 w-4 text-primary-foreground" />
+            <span className="text-xs font-medium text-primary-foreground">Verified BYU Students Only</span>
           </div>
 
           <h2 className="mb-5 text-center text-lg font-semibold text-foreground">
@@ -153,12 +153,12 @@ const LoginView = ({ onLogin }: LoginViewProps) => {
             </Button>
           </form>
 
-          <div className="mt-4 space-y-2">
+          {/* <div className="mt-4 space-y-2">
             {!isSignUp && (
               <button className="w-full text-center text-sm text-primary hover:underline">
                 Forgot password?
               </button>
-            )}
+            )} */}
             <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
               <span>{isSignUp ? "Already have an account?" : "New to STÜBER?"}</span>
               <button
@@ -177,7 +177,7 @@ const LoginView = ({ onLogin }: LoginViewProps) => {
           </div>
         </div>
       </div>
-    </div>
+    // </div>
   );
 };
 
