@@ -64,6 +64,58 @@ pool.on('error', (err) => {
   process.exit(-1);
 });
 
+const ensureImagePathColumns = async () => {
+  try {
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'users'
+            AND column_name = 'profile_photo_url'
+        ) AND NOT EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'users'
+            AND column_name = 'profile_photo_path'
+        ) THEN
+          ALTER TABLE public.users RENAME COLUMN profile_photo_url TO profile_photo_path;
+        END IF;
+      END
+      $$;
+    `);
+
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'car'
+            AND column_name = 'car_photo_url'
+        ) AND NOT EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'car'
+            AND column_name = 'car_photo_path'
+        ) THEN
+          ALTER TABLE public.car RENAME COLUMN car_photo_url TO car_photo_path;
+        END IF;
+      END
+      $$;
+    `);
+  } catch (error) {
+    console.error('Error ensuring image path columns:', error);
+  }
+};
+
+void ensureImagePathColumns();
+
 // Routes
 
 // Auth: login (email or username + password)
@@ -472,6 +524,165 @@ app.get('/api/cars/:id', async (req, res) => {
       });
     }
     
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get locations (used for ride posting dropdowns)
+app.get('/api/locations', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT location_id, name, location_type FROM location ORDER BY location_id ASC'
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching locations:', error);
+    if (error.code === '3D000') {
+      return res.status(500).json({ error: 'Database does not exist. Please run the database setup scripts first.' });
+    }
+    if (error.code === '28P01') {
+      return res.status(500).json({ error: 'Database authentication failed. Please check your .env file credentials.' });
+    }
+    if (error.code === '42P01') {
+      return res.status(500).json({ error: 'Location table does not exist. Please run schema.sql.' });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create a one-time ride offer
+app.post('/api/rides', async (req, res) => {
+  try {
+    const { userId, fromLocationId, toLocationId, fromLocation, toLocation, departureTime, availableSeats, notes } =
+      req.body ?? {};
+
+    const parsedUserId = Number(userId);
+    const parsedSeats = Number(availableSeats);
+    let fromId = fromLocationId != null ? Number(fromLocationId) : null;
+    let toId = toLocationId != null ? Number(toLocationId) : null;
+    const fromName = typeof fromLocation === 'string' ? fromLocation.trim() : '';
+    const toName = typeof toLocation === 'string' ? toLocation.trim() : '';
+    const departRaw = typeof departureTime === 'string' ? departureTime.trim() : '';
+
+    if (!Number.isInteger(parsedUserId) || parsedUserId <= 0) {
+      return res.status(400).json({ error: 'Valid userId is required' });
+    }
+    // IDs are preferred. Names are accepted only for legacy clients.
+    if ((!Number.isInteger(fromId) || fromId <= 0) && !fromName) {
+      return res.status(400).json({ error: 'From location is required' });
+    }
+    if ((!Number.isInteger(toId) || toId <= 0) && !toName) {
+      return res.status(400).json({ error: 'To location is required' });
+    }
+    if (!departRaw) {
+      return res.status(400).json({ error: 'Departure time is required' });
+    }
+    if (!Number.isInteger(parsedSeats) || parsedSeats <= 0) {
+      return res.status(400).json({ error: 'availableSeats must be a positive integer' });
+    }
+
+    const departureDate = new Date(departRaw);
+    if (Number.isNaN(departureDate.getTime())) {
+      return res.status(400).json({ error: 'departureTime must be a valid datetime string' });
+    }
+    const departureSql = departureDate.toISOString().slice(0, 19).replace('T', ' ');
+
+    const userResult = await pool.query('SELECT user_id FROM users WHERE user_id = $1', [parsedUserId]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const resolveExistingLocationId = async (idValue, nameValue) => {
+      if (Number.isInteger(idValue) && idValue > 0) return idValue;
+      if (!nameValue) return null;
+      const existing = await pool.query(
+        'SELECT location_id FROM location WHERE LOWER(name) = LOWER($1) LIMIT 1',
+        [nameValue]
+      );
+      if (existing.rows.length === 0) return null;
+      return existing.rows[0].location_id;
+    };
+
+    fromId = await resolveExistingLocationId(fromId, fromName);
+    toId = await resolveExistingLocationId(toId, toName);
+
+    if (!Number.isInteger(fromId) || fromId <= 0) {
+      return res.status(400).json({ error: 'From location must exist in the database' });
+    }
+    if (!Number.isInteger(toId) || toId <= 0) {
+      return res.status(400).json({ error: 'To location must exist in the database' });
+    }
+
+    const rideResult = await pool.query(
+      `INSERT INTO ride_offer
+        (user_id, from_location_id, to_location_id, departure_time, available_seats, notes, status)
+       VALUES ($1, $2, $3, $4::timestamp, $5, $6, 'active')
+       RETURNING offer_id, user_id, from_location_id, to_location_id, departure_time, available_seats, notes, status, created_at`,
+      [parsedUserId, fromId, toId, departureSql, parsedSeats, notes ?? null]
+    );
+
+    res.status(201).json(rideResult.rows[0]);
+  } catch (error) {
+    console.error('Error creating ride:', error);
+    if (error.code === '3D000') {
+      return res.status(500).json({ error: 'Database does not exist. Please run the database setup scripts first.' });
+    }
+    if (error.code === '28P01') {
+      return res.status(500).json({ error: 'Database authentication failed. Please check your .env file credentials.' });
+    }
+    if (error.code === '42P01') {
+      return res.status(500).json({ error: 'Ride/location tables do not exist. Please run schema.sql.' });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get active ride offers with related user/location/car data
+app.get('/api/rides', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+        ro.offer_id,
+        ro.departure_time,
+        ro.available_seats,
+        ro.status,
+        ro.notes,
+        ro.from_location_id,
+        ro.to_location_id,
+        lf.name AS from_location_name,
+        lt.name AS to_location_name,
+        u.user_id AS driver_user_id,
+        u.first_name AS driver_first_name,
+        u.last_name AS driver_last_name,
+        u.username AS driver_username,
+        u.profile_photo_path AS driver_profile_photo_path,
+        c.year AS car_year,
+        c.make AS car_make,
+        c.model AS car_model,
+        c.color AS car_color,
+        c.license_plate AS car_license_plate,
+        c.car_photo_path AS car_photo_path
+      FROM ride_offer ro
+      JOIN users u ON u.user_id = ro.user_id
+      JOIN location lf ON lf.location_id = ro.from_location_id
+      JOIN location lt ON lt.location_id = ro.to_location_id
+      LEFT JOIN car c ON c.user_id = u.user_id
+      WHERE ro.status = 'active'
+      ORDER BY ro.departure_time ASC, ro.offer_id ASC`
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching rides:', error);
+    if (error.code === '3D000') {
+      return res.status(500).json({ error: 'Database does not exist. Please run the database setup scripts first.' });
+    }
+    if (error.code === '28P01') {
+      return res.status(500).json({ error: 'Database authentication failed. Please check your .env file credentials.' });
+    }
+    if (error.code === '42P01') {
+      return res.status(500).json({ error: 'Ride tables do not exist. Please run schema.sql.' });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
