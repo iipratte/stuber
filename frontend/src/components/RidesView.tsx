@@ -64,7 +64,8 @@ const formatDateTimeNoSeconds = (value: string) => {
 const RidesView = () => {
   const currentUserId = useMemo(() => {
     try {
-      const raw = localStorage.getItem("stuber.user");
+      // Keep key consistent with login/session storage.
+      const raw = localStorage.getItem("blueride.user") ?? localStorage.getItem("stuber.user");
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       return typeof parsed?.user_id === "number" ? parsed.user_id : null;
@@ -80,6 +81,8 @@ const RidesView = () => {
   const [routeToFilter, setRouteToFilter] = useState("__all__");
   const [showFilters, setShowFilters] = useState(false);
   const [rides, setRides] = useState<RideRow[]>([]);
+  const [bookedOfferIds, setBookedOfferIds] = useState<Set<number>>(new Set());
+  const [actionOfferId, setActionOfferId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDriver, setSelectedDriver] = useState<{
     userId: number;
@@ -112,8 +115,67 @@ const RidesView = () => {
     }
   };
 
+  const fetchMyBookings = async () => {
+    if (currentUserId == null) {
+      setBookedOfferIds(new Set());
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/my-rides?userId=${currentUserId}`);
+      if (!response.ok) throw new Error("Failed to fetch bookings");
+      const data = await response.json();
+      const offerIds = new Set<number>();
+      const booked = Array.isArray(data?.bookedRides) ? data.bookedRides : [];
+      for (const row of booked) {
+        const id = Number(row?.offer_id);
+        if (Number.isInteger(id) && id > 0) offerIds.add(id);
+      }
+      setBookedOfferIds(offerIds);
+    } catch (error) {
+      console.error("Error fetching booking state:", error);
+      setBookedOfferIds(new Set());
+    }
+  };
+
+  const handleBookToggle = async (ride: RideRow) => {
+    if (currentUserId == null) {
+      toast.error("Please sign in to book rides");
+      return;
+    }
+
+    const isBooked = bookedOfferIds.has(ride.offer_id);
+    setActionOfferId(ride.offer_id);
+    try {
+      if (isBooked) {
+        const response = await fetch(
+          `${API_BASE_URL}/api/rides/${ride.offer_id}/book?userId=${currentUserId}`,
+          { method: "DELETE" }
+        );
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload?.error || "Failed to cancel booking");
+        toast.success("Booking cancelled");
+      } else {
+        const response = await fetch(`${API_BASE_URL}/api/rides/${ride.offer_id}/book`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: currentUserId }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload?.error || "Failed to book ride");
+        toast.success("Ride booked");
+      }
+
+      await Promise.all([fetchRides(), fetchMyBookings()]);
+    } catch (error) {
+      console.error("Error updating booking:", error);
+      toast.error(error instanceof Error ? error.message : "Could not update booking");
+    } finally {
+      setActionOfferId(null);
+    }
+  };
+
   useEffect(() => {
-    fetchRides();
+    void Promise.all([fetchRides(), fetchMyBookings()]);
   }, []);
 
   const filteredRides = useMemo(() => {
@@ -173,7 +235,7 @@ const RidesView = () => {
   }, [rides]);
 
   const handleRefresh = () => {
-    fetchRides();
+    void Promise.all([fetchRides(), fetchMyBookings()]);
     toast("Rides refreshed", { description: `${filteredRides.length} rides available` });
   };
 
@@ -311,6 +373,8 @@ const RidesView = () => {
         )}
 
         {!loading && filteredRides.map((ride, i) => {
+          const isBooked = bookedOfferIds.has(ride.offer_id);
+          const isMutating = actionOfferId === ride.offer_id;
           const driverName = `${ride.driver_first_name ?? ""} ${ride.driver_last_name ?? ""}`.trim() || ride.driver_username;
           const departureText = formatDateTimeNoSeconds(ride.departure_time);
           const vehicleText = [ride.car_color, ride.car_year, ride.car_make, ride.car_model]
@@ -392,13 +456,11 @@ const RidesView = () => {
               <div className="flex items-center justify-end gap-2">
                 <Button
                   size="sm"
-                  disabled={ride.available_seats === 0}
+                  disabled={isMutating || (!isBooked && ride.available_seats === 0)}
                   className="min-w-[80px] text-xs dark:bg-accent dark:text-accent-foreground dark:hover:bg-accent/90"
-                  onClick={() =>
-                    toast.info("Booking flow not wired yet", { description: "Rides are now loaded from the database." })
-                  }
+                  onClick={() => handleBookToggle(ride)}
                 >
-                  Book Ride
+                  {isMutating ? "Saving..." : isBooked ? "Cancel Booking" : "Book Ride"}
                 </Button>
               </div>
             </div>

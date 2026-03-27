@@ -6,6 +6,8 @@ import {
   Car,
   Users,
   Shield,
+  Phone,
+  Mail,
 } from "lucide-react";
 import {
   Dialog,
@@ -57,6 +59,8 @@ type DriverProfile = {
   firstName: string;
   lastName: string;
   username: string;
+  email?: string | null;
+  phone?: string | null;
   profilePhotoPath?: string | null;
   carYear: number | null;
   carMake: string | null;
@@ -78,14 +82,18 @@ interface RideDriverProfileModalProps {
   open: boolean;
   onClose: () => void;
   driver: DriverProfile | null;
-  upcomingRides: RideRow[];
+  upcomingRides?: RideRow[];
+  showUpcomingRides?: boolean;
+  showVehicleInfo?: boolean;
 }
 
 const RideDriverProfileModal = ({
   open,
   onClose,
   driver,
-  upcomingRides,
+  upcomingRides = [],
+  showUpcomingRides = true,
+  showVehicleInfo = true,
 }: RideDriverProfileModalProps) => {
   const title = driver
     ? `${driver.firstName} ${driver.lastName}`.trim() || "Driver"
@@ -131,23 +139,39 @@ const RideDriverProfileModal = ({
           ) : (
             <div className="h-16 w-16 rounded-full border border-border bg-muted/40" />
           )}
-          <div className="min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Car className="h-3.5 w-3.5" />
-              Vehicle
-            </div>
-            <p className="text-sm font-medium text-foreground truncate">
-              {carText || "Vehicle info unavailable"}
-            </p>
-            {driver?.carLicensePlate ? (
-              <p className="text-xs text-muted-foreground font-mono">
-                {driver.carLicensePlate}
+          <div className="min-w-0 space-y-1">
+            {showVehicleInfo ? (
+              <>
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Car className="h-3.5 w-3.5" />
+                  Vehicle
+                </div>
+                <p className="text-sm font-medium text-foreground truncate">
+                  {carText || "Vehicle info unavailable"}
+                </p>
+                {driver?.carLicensePlate ? (
+                  <p className="text-xs text-muted-foreground font-mono">
+                    {driver.carLicensePlate}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+            {driver?.email ? (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Mail className="h-3 w-3" />
+                {driver.email}
+              </p>
+            ) : null}
+            {driver?.phone ? (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Phone className="h-3 w-3" />
+                {driver.phone}
               </p>
             ) : null}
           </div>
         </div>
 
-        {carImg ? (
+        {showVehicleInfo && carImg ? (
           <div className="mt-3">
             <img
               src={carImg}
@@ -157,7 +181,7 @@ const RideDriverProfileModal = ({
           </div>
         ) : null}
 
-        {upcomingRides.length > 0 ? (
+        {showUpcomingRides && upcomingRides.length > 0 ? (
           <div className="mt-4">
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <Users className="h-3.5 w-3.5" />
@@ -185,11 +209,11 @@ const RideDriverProfileModal = ({
               ))}
             </div>
           </div>
-        ) : (
+        ) : showUpcomingRides ? (
           <p className="mt-4 text-sm text-muted-foreground">
             No upcoming rides for this driver.
           </p>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
   );
