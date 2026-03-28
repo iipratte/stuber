@@ -391,6 +391,73 @@ app.put('/api/users/:id', async (req, res) => {
   }
 });
 
+// Create a car for a user and link it (users.car_id must be null)
+app.post('/api/users/:id/car', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const parsedUserId = Number(id);
+    if (!Number.isInteger(parsedUserId) || parsedUserId <= 0) {
+      return res.status(400).json({ error: 'Valid user id is required' });
+    }
+
+    const { make, model, year, color, licensePlate } = req.body ?? {};
+    const makeTrim = typeof make === 'string' ? make.trim() : '';
+    const modelTrim = typeof model === 'string' ? model.trim() : '';
+    if (!makeTrim || !modelTrim) {
+      return res.status(400).json({ error: 'Make and model are required' });
+    }
+
+    const userResult = await pool.query(
+      'SELECT user_id, car_id FROM users WHERE user_id = $1',
+      [parsedUserId]
+    );
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (userResult.rows[0].car_id != null) {
+      return res.status(400).json({ error: 'User already has a vehicle' });
+    }
+
+    let yearVal = null;
+    if (year != null && year !== '') {
+      const y = Number(year);
+      if (Number.isInteger(y) && y >= 1900 && y <= 2100) {
+        yearVal = y;
+      }
+    }
+
+    const plateTrim = typeof licensePlate === 'string' ? licensePlate.trim() : '';
+    const colorVal = typeof color === 'string' && color.trim() ? color.trim() : null;
+
+    const insert = await pool.query(
+      `INSERT INTO car (user_id, make, model, color, year, license_plate)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING car_id, user_id, make, model, color, year, license_plate, car_photo_path`,
+      [parsedUserId, makeTrim, modelTrim, colorVal, yearVal, plateTrim || '']
+    );
+
+    const carRow = insert.rows[0];
+    await pool.query('UPDATE users SET car_id = $1 WHERE user_id = $2', [carRow.car_id, parsedUserId]);
+
+    res.status(201).json(carRow);
+  } catch (error) {
+    console.error('Error creating car:', error);
+
+    if (error.code === '3D000') {
+      return res.status(500).json({
+        error: 'Database does not exist. Please run the database setup scripts first.',
+      });
+    }
+    if (error.code === '28P01') {
+      return res.status(500).json({
+        error: 'Database authentication failed. Please check your .env file credentials.',
+      });
+    }
+
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Update username (kept for backward compatibility; now updates the username column)
 app.put('/api/users/:id/username', async (req, res) => {
   try {
